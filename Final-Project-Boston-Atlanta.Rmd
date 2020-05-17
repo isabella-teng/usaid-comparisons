@@ -1,0 +1,357 @@
+---
+title: 'Text Mining Historical Newsletters: Atlanta and Boston'
+authors: Isabella Teng, Krish Maypole, Arka Gupta, Sarina Xu
+output: html_notebook
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# EVST 378/AFST 378/S&DS 138: USAID in Sub-Saharan Africa
+
+## Summary
+
+This project performs sentiment analysis and topic model analysis on a corpus composed of ~20 documents of historical newspapers from various Atlanta publications dating pre-2000 that are centered around USAID in tandem with sentiment analysis and topic model analysis on a corpus composed of ~30 documents of historical newspapers from various Boston publications from a similar time period. 
+
+
+## Background
+
+USAID is a government agency founded by President John F Kennedy in 1961. Headquartered in Washington D.C., it has a global outreach with an annual budget of 27.2 billion USD. Despite its noble mission, the USAID has been embroiled in controversies ranging from extravagant spending and incompetence to moral hypocrisy and corruption of its highest officials. Given that the crux of USAID's work is completed overseas, and meaningful progress often takes many years to manifest, the benefits of USAID's work is often masked from the general public. Consequently, we seek to gauge public perception of USAID by text mining articles in Atlanta newspapers regarding USAID. Acknowledging that public perception is difficult to accurately measure, newspapers will provide a proxy reflecting general sentiment of the public.
+
+
+
+# Text Mining Overview
+
+## Atlanta
+Every article was mined from an Atlanta newspaper. 15 articles are derived from the Atlanta Daily World, 2 articles from the Atlanta Inquirer, 2 articles for the Atlanta Constitution, and 1 article from the Atlanta Journal and Constitution. Note that none of these sources are from USAID nor the federal government. 
+
+## Boston
+Every article was mined from a Boston newspaper. All 32 articles are from The Boston Globe. Note that none of these sources are from USAID nor the federal government.
+
+(0) Convert all PDFs to text files (Only run this chunk once. If you already have the .txt files in your folder, skip.)
+```{r}
+# First go to the drive and unzip the Old Atlanta Articles folder, place in your working directory
+
+# Search for our folder of article pdfs
+#dest <- "Atlanta_Articles"
+
+# Make a vector of PDF file names
+#allFiles1 <- list.files(path = dest, pattern = "pdf",  full.names = TRUE)
+
+# Since our PDFs are just images of text, we need to convert them .txt files
+# We need these libraries
+
+#library(pdftools)
+#library(tesseract)
+#library(magick)
+
+# Convert pdf to jpef/tiff and perform tesseract OCR on the image
+# This will take a while since we have so many articles
+
+#lapply(allFiles1, function(i) {
+#  img_file <- pdftools::pdf_convert(i, format = 'tiff',  dpi = 400)
+#  text <- ocr(img_file)
+#  write.table(text, gsub('.pdf', '.txt', i))
+#})
+
+#Remove all tiff files in our directory
+#delFiles1 <- dir(path=getwd(), pattern="*.tiff")
+#file.remove(file.path(getwd(), delFiles1))
+
+# Do the same for the Boston Articles
+# First go to the drive and unzip the Old Boston Articles folder, place in your working directory
+
+# Search for our folder of article pdfs
+#dest2 <- "Boston_Articles"
+
+# Make a vector of PDF file names
+#allFiles <- list.files(path = dest2, pattern = "pdf",  full.names = TRUE)
+
+# Convert pdf to jpef/tiff and perform tesseract OCR on the image
+# This will take a while since we have so many articles
+
+#lapply(allFiles, function(i) {
+#  img_file <- pdftools::pdf_convert(i, format = 'tiff',  dpi = 400)
+#  text <- ocr(img_file)
+#  write.table(text, gsub('.pdf', '.txt', i))
+#})
+
+#Remove all tiff files in our directory
+#delFiles <- dir(path=getwd(), pattern="*.tiff")
+#file.remove(file.path(getwd(), delFiles))
+```
+
+Importantly, articles from both Atlanta and Boston were first imported as .pdf files from ProQuest, which presented a substantial challenge in converting them to appropriate files for NLP analyses. As is shown above, the .pdf's are converted to .tiff's, at which point they are converted to .txt files. Notably, the optical character recognition process resulted in imperfect conversion, which means the data remains slightly more messy than is ideal. We proceed in our analyses keeping this fact in mind. 
+
+(1A) Here, we create a corpus of all our text files, first for Atlanta.
+```{r}
+library(tm)
+library(SnowballC)
+### Atlanta
+#Only add txt files to the corpus
+atlantaCorpus <- Corpus(DirSource("Atlanta_Articles",  pattern="*.txt"))
+
+#Check the corpus, ensure that there is the correct amount of articles
+inspect(atlantaCorpus)
+
+#Data cleaning and word stemming
+removeNumPunct <- function(x) gsub("[^[:alpha:][:space:]]*", "", x)
+atlantaCorpus <- tm_map(atlantaCorpus, content_transformer(removeNumPunct))
+atlantaCorpus <- tm_map(atlantaCorpus, stripWhitespace)
+atlantaCorpus <- tm_map(atlantaCorpus, removeNumbers)
+atlantaCorpus <- tm_map(atlantaCorpus, removePunctuation)
+atlantaCorpus <- tm_map(atlantaCorpus, content_transformer(tolower))
+atlantaCorpus <- tm_map(atlantaCorpus, removeWords, c(stopwords("english"),"]-", "―", "|", "eee", "een", "eae"))
+atlantaCorpus <- tm_map(atlantaCorpus, stemDocument)
+
+#Document Term Matrix from corpus
+atlantaDTM <- DocumentTermMatrix(atlantaCorpus)
+atlantaDTM
+
+#Inspect Terms
+inspect(atlantaDTM)
+head(Terms(atlantaDTM), 2)
+```
+
+(1B) Here, we create a corpus of all our text files for Boston.
+```{r}
+#Only add txt files to the corpus
+bostonCorpus <- Corpus(DirSource("Boston_Articles",  pattern="*.txt"))
+
+#Check the corpus, ensure that there is the correct amount of articles
+inspect(bostonCorpus)
+
+#Data cleaning and word stemming
+removeNumPunct <- function(x) gsub("[^[:alpha:][:space:]]*", "", x)
+bostonCorpus <- tm_map(bostonCorpus, content_transformer(removeNumPunct))
+bostonCorpus <- tm_map(bostonCorpus, stripWhitespace)
+bostonCorpus <- tm_map(bostonCorpus, removeNumbers)
+bostonCorpus <- tm_map(bostonCorpus, removePunctuation)
+bostonCorpus <- tm_map(bostonCorpus, content_transformer(tolower))
+bostonCorpus <- tm_map(bostonCorpus, removeWords, c(stopwords("english"),"]-", "―", "|", "eee", "cece"))
+bostonCorpus <- tm_map(bostonCorpus, stemDocument)
+
+
+#Document Term Matrix from corpus
+bostonDTM <- DocumentTermMatrix(bostonCorpus)
+bostonDTM
+
+#Inspect Terms
+inspect(bostonDTM)
+head(Terms(bostonDTM), 2)
+```
+
+(2A) In the following chunk, we perform sentiment analysis for Atlanta. 
+```{r fig.height = 10, fig.width = 5}
+library(tidytext)
+library(dplyr)
+atlantaTibble <- tidy(atlantaDTM)
+atlantaTibble
+colnames(atlantaTibble) <- c("document", "word", "count")
+
+library(textdata)
+sentiment <- get_sentiments("nrc")
+atlantaSentiments <- atlantaTibble %>% 
+                    inner_join(sentiment, by="word") %>% 
+                    count(word, sentiment, sort=TRUE) %>% 
+                    ungroup()
+atlantaSentiments
+
+#Plot the sentiment scores
+library(ggplot2)
+atlantaSentiments %>%
+  filter(n > 3) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ylab("Contribution to sentiment") +
+  coord_flip()
+```
+From the sentiment analysis above, we see that "develop" is the term with the most positive valence. In addition, "develop" has a high sentiment value for anticipation. It was also interesting to note that terms such as "director", "assist" and "nation" significantly contributed to a sentiment of trust, as well as terms such as "govern" and "establish". 
+
+An interesting tidbit to note about Atlanta is that two native Atlantians have had successful careers in USAID. For example, Julius Coles was awarded high-ranking posts in the USAID such as Mission Director to Sengel. Likewise, Dr. Carole Tyson was appointed Mission Director to Jamaica. These happenings could help explain why award has such a positive contribution to sentiment.
+
+Some words represented negative contribution to sentiment, particularly "foreign" and "sever". The terms "black" and "inter" also were two of the four terms that had any significant negative contributions to sentiment, but they were balanced out by a positive contribution to sentiment.
+
+(2B) In the following chunk, we perform sentiment analysis on the Boston corpus. 
+```{r fig.height = 10, fig.width = 5}
+bostonTibble <- tidy(bostonDTM)
+bostonTibble
+colnames(bostonTibble) <- c("document", "word", "count")
+sentiment <- get_sentiments("nrc")
+bostonSentiments <- bostonTibble %>% inner_join(sentiment, by="word") %>% count(word, sentiment, sort=TRUE) %>% ungroup()
+bostonSentiments
+
+#Plot the sentiment scores
+bostonSentiments %>%
+  filter(n > 3) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ylab("Contribution to sentiment") +
+  coord_flip()
+```
+As demonstrated by the sentiment analysis, words are attributed with overwhelmingly negative sentiments like "anger", "sadness", "disgust", "fear", "negative" and/or attributed with overwhelmingly positive sentiments like "joy", "positive", "surprise", "trust", and "anticipation". In the graph, it's clear that some words have only one sentiment associated with them, like "aid," which has only been plotted with the sentiment "positive" and other words have multiple sentiments attached to them, like "vote", which has mostly positive sentiments and only one negative one ("negative").
+
+More broadly, there's some commonality in the words that have the most negative association: in both Atlanta and Boston articles, "foreign" is the word with the most negative sentiment, which comes as a surprise given Boston's more liberal-leaning history. 
+
+
+(3A) Further sentiment analysis for Atlanta, to locate the most positive and negative words.
+```{r fig.height = 8, fig.width = 5}
+nrc_word_counts <- atlantaTibble %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(word, sentiment, sort = TRUE)  %>%
+  ungroup()
+
+nrc_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment", x = NULL) +
+  coord_flip()
+```
+As demonstrated above, the words that contributed most to positive sentiment are "develop", "director", and "assist". The words that contributed most to negative sentiment are "foreign", "sever", and "black".
+
+(3B) Further sentiment analysis for Boston
+```{r, fig.height = 8, fig.width = 5}
+nrc_word_counts <- bostonTibble %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(word, sentiment, sort = TRUE)  %>%
+  ungroup()
+
+nrc_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment", x = NULL) +
+  coord_flip()
+```
+In these results it is clear as to which words are associated most with each of the sentiments calculated in the previous code chunk. What's interesting to note is that the word "money" is associated most closely with the sentiment "anger". In these articles, it seems like money has a negative attribution when talking about African aid. Additionally, one misconception that may arise in this code is that the word "present" is associated closest to the sentiment "surprise". However, present could either by synonymous with something to suggest a gift or rather, to be in a current state of mind. 
+
+As demonstrated above, the words that contributed most to positive sentiment are "develop", "organ", "aid", "present", and "nation. The words that contributed most to negative sentiment are "foreign", "problem", and "war". Strikingly, "congress" contributes most to a sentiment of disgust for the Boston corpus.
+
+In class discussions this semester, "foreign" has been a frequent precursor to "aid" in sentences discussion foreign aid. Nonetheless, "foreign" reflects negative sentiment in both the Atlanta and the Boston articles.
+
+
+(4A) The following code performs topic analysis on our corpus, with k=3 for Atlanta.
+```{r}
+library(tm)
+library(tidytext)
+library(tidyr)
+library(dplyr)
+library(NLP)
+library(ggplot2)
+library(topicmodels)
+
+rowTotals <- apply(atlantaDTM , 1, sum)
+atlantaDTM.new <- atlantaDTM[rowTotals> 0, ]
+atlantaLDA <- LDA(atlantaDTM.new, k = 3, control = list(seed = 1234))
+atlantaTopics <- tidy(atlantaLDA, matrix = "beta")
+
+atlantaTopTerms <- atlantaTopics %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+atlantaTopTerms %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill=factor(topic))) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~topic, scales = "free") +
+  theme(axis.text.x = element_text(size = 15, angle = 90, hjust = 1)) +
+  coord_flip()
+```
+According to the topic analysis, we find three unlabeled topics. The diagrams visually represent the probability of certain words being associated with that unlabeled topic, and can provide insights into what the topic is. For example, the words most associated with the first topic is "Africa", "presid" (possibly president) and "Cole" (most likely Dr. Cole). Other pertinent words include "intern" and "program". This suggests the first topic is about USAID programming; if specific, it may be a USAID program administered by Dr. Cole. The words most associated with the second topic are "will", "whitfield", and "educ". Other pertinent words include "nation" and "kenya". Therefore, the second topic is most likely a USAID program located in Kenya focusing on education and/or agriculture. Terms used to describe the third topic are "develop", "care", and "will". These results suggest the third topic relates to upcoming and future USAID programming in Africa.
+
+(4B) The following chunk performs topic analysis for the corpus of Boston Articles.
+```{r}
+rowTotals <- apply(bostonDTM , 1, sum)
+bostonDTM.new <- bostonDTM[rowTotals> 0, ]
+bostonLDA <- LDA(bostonDTM.new, k = 3, control = list(seed = 1234))
+bostonTopics <- tidy(bostonLDA, matrix = "beta")
+
+bostonTopTerms <- bostonTopics %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+bostonTopTerms %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill=factor(topic))) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~topic, scales = "free") +
+  theme(axis.text.x = element_text(size = 15, angle = 90, hjust = 1)) +
+  coord_flip()
+```
+The terms most common to topic #1 include "africa", "aid", and "said". The terms most common to topic #2 also include "africa" and other words like "world", and "will". Topic #3 includes "sudan, "nation, and "mani". Though the topics are unlabeled, broad themes can be ascribed to each based on the most common words: government, global development, and health-related aid seem appropriate to designate to topics 1, 2, and 3 respectively. Especially given imperfections with data cleaning, however, it would be beneficial to read the articles thoroughly to categorize in more depth. 
+
+Stepping back to think more deeply about the comparisons between Boston and Atlanta, the Boston topics we have assigned here seem more broad. Indeed, there were 32 Boston articles as compared to 20 Atlanta articles; therefore there is a greater amount of text, and correspondingly a greater amount of information to which we are attempting to assign themes. Such a difference in sample size helps explain the difference in scope between the scope of the topics. 
+
+(5A) A word cloud to visualize the 100 most common terms in Atlanta articles.
+```{r}
+library(wordcloud)
+atlantaTDM <-TermDocumentMatrix(atlantaCorpus)
+atlantaMatrix <- as.matrix(atlantaTDM)
+sortTerms <- sort(rowSums(atlantaMatrix),decreasing=TRUE)
+wordDF <- data.frame(word = names(sortTerms),freq=sortTerms)
+head(wordDF, 10)
+
+set.seed(1234)
+wordcloud(words = wordDF$word, freq = wordDF$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, scale = c(3, 0.5), rot.per=0.5, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+(5B) A word cloud to visualize the 100 most common terms in the Boston Articles.
+```{r}
+library(wordcloud)
+bostonTDM <-TermDocumentMatrix(bostonCorpus)
+bostonMatrix <- as.matrix(bostonTDM)
+sortTerms <- sort(rowSums(bostonMatrix),decreasing=TRUE)
+wordDF <- data.frame(word = names(sortTerms),freq=sortTerms)
+head(wordDF, 10)
+
+set.seed(1234)
+wordcloud(words = wordDF$word, freq = wordDF$freq, min.freq = 1,
+          max.words=100, random.order=FALSE, scale = c(3, 0.5),rot.per=0.5, 
+          colors=brewer.pal(8, "Dark2"))
+```
+
+(6A) And finally, word associations for the top 3 words with minimum threshold of 0.9 (Atlanta)
+```{r}
+inspect(atlantaTDM)
+termsVector <- atlantaTopTerms['term']
+findAssocs(atlantaTDM, termsVector[[1]][1], 0.9)
+findAssocs(atlantaTDM, termsVector[[1]][2], 0.9)
+findAssocs(atlantaTDM, termsVector[[1]][3], 0.9)
+```
+
+The 3 most common words are "africa", "presid" and "atlanta". For Africa, words with an association higher than 0.9 included "proquest", "type", and "date", which all seem to be associated with Proquest database search terms rather than substantive content associations. For the term "atlanta", there were no terms that had a word association higher than 0.9. For the term presid, there were three pages of terms that word associations above 0.9, which included "action", "clinton" and "diplomaci".
+
+(6B) And finally, word associations for the top 3 words with minimum thresholds of 0.6 (Boston)
+```{r}
+inspect(bostonTDM)
+termsVector <- bostonTopTerms['term']
+findAssocs(bostonTDM, termsVector[[1]][1], 0.6)
+findAssocs(bostonTDM, termsVector[[1]][2], 0.6)
+findAssocs(bostonTDM, termsVector[[1]][3], 0.6)
+```
+The three most common words for the Boston Articles are "aid", "africa" and "state". For "aid", the three highest-associated words were "bill", "bureacraci" and "government", which reflects the important role of government bodies in dispensing aid, especially in the context of the articles at hand about USAID. Furthermore, for "africa", the three highest-associated words were "begun", "environ" and "initi", which does not reveal much about the niche "africa" occupies in the Boston articles. Finally, three of the most closely-tied words to "state" are "admit", "democraci" and "furnish". Granted, "cialli" is in the top 3, but does not add much value to analyses. As for the other three terms mentioned, "state" seems closely related to the perpetuation and potentially the spread of democracy. It is important to note that the threshold is under 0.8 as higher thresholds yielded no results, so the association analysis for the Boston corpus is not that strong.
+
+#Summary
+Overall, we ran into problems cleaning the data as the articles pre-dated 2000 and had to be converted from PDFs to text files, hence why URLs and strings like "proquest" were picked up as common terms in the DTMs for both sets of cities. 
+For both cities, we found that words like aid, develop, and assist contributed most to positive sentiments. Words like foreign, severity, and war were found to be terms associated with negative sentiments, with foreign common to both Boston and Atlanta as the term most contributing to negative sentiment. The topic modeling for both proved inconclusive—both cities seem to generally revolve around health, agricultural, and food related aid programs in African countries. We originally thought that prior to running the analyses, we'd find differences in sentiment toward aid between the northern and southern city. However, our results determined the opposite and that they are similar in both topics and overall sentiments.
+
+In future work, it may be beneficial to explore the documents in greater granularity—perhaps by determining which documents contributed to what extent the topics that were predicted out of the LDA modeling, or the groupings of documents by publication to highlight potential skews in sentiment, or even seperating out the documents by year. 
